@@ -117,58 +117,63 @@ export function registerFleetIpc(
   });
 
   // 2. Join Lobby as a Client Node
-  ipcMain.handle("fleet:join-lobby", async (_, { roomCode, nodeId }) => {
-    try {
-      if (fleetClientInstance) {
-        fleetClientInstance.disconnect();
+  ipcMain.handle(
+    "fleet:join-lobby",
+    async (_, { roomCode, nodeId, hostIp }) => {
+      try {
+        if (fleetClientInstance) {
+          fleetClientInstance.disconnect();
+        }
+        fleetClientInstance = new FleetClient();
+
+        const endpoint = hostIp?.trim()
+          ? { hostIp: hostIp.trim(), port: 4096 }
+          : await discoverFleetHost(roomCode);
+
+        // Forward client received events to renderer
+        fleetClientInstance.on("command_received", (type) => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("fleet:client-command", type);
+          }
+        });
+        fleetClientInstance.on("telemetry", (data) => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("fleet:telemetry", data);
+          }
+        });
+        fleetClientInstance.on("prescan_ready", (data) => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("fleet:node-prescan", {
+              nodeId: data.nodeId,
+              preScanFindings: data.findings,
+              lastLog: "Pre-Scan Complete: Inventory cataloged.",
+            });
+          }
+        });
+        fleetClientInstance.on("completed", (data) => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("fleet:node-complete", data);
+          }
+        });
+        fleetClientInstance.on("disconnected", () => {
+          if (!mainWindow.isDestroyed()) {
+            mainWindow.webContents.send("fleet:client-disconnected");
+          }
+        });
+
+        const result = await fleetClientInstance.joinLobby(
+          endpoint.hostIp,
+          endpoint.port,
+          roomCode,
+          nodeId,
+        );
+        return result;
+      } catch (err: any) {
+        console.error("[FleetIPC] Error joining lobby:", err);
+        return { success: false, error: err.message };
       }
-      fleetClientInstance = new FleetClient();
-
-      const endpoint = await discoverFleetHost(roomCode);
-
-      // Forward client received events to renderer
-      fleetClientInstance.on("command_received", (type) => {
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("fleet:client-command", type);
-        }
-      });
-      fleetClientInstance.on("telemetry", (data) => {
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("fleet:telemetry", data);
-        }
-      });
-      fleetClientInstance.on("prescan_ready", (data) => {
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("fleet:node-prescan", {
-            nodeId: data.nodeId,
-            preScanFindings: data.findings,
-            lastLog: "Pre-Scan Complete: Inventory cataloged.",
-          });
-        }
-      });
-      fleetClientInstance.on("completed", (data) => {
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("fleet:node-complete", data);
-        }
-      });
-      fleetClientInstance.on("disconnected", () => {
-        if (!mainWindow.isDestroyed()) {
-          mainWindow.webContents.send("fleet:client-disconnected");
-        }
-      });
-
-      const result = await fleetClientInstance.joinLobby(
-        endpoint.hostIp,
-        endpoint.port,
-        roomCode,
-        nodeId,
-      );
-      return result;
-    } catch (err: any) {
-      console.error("[FleetIPC] Error joining lobby:", err);
-      return { success: false, error: err.message };
-    }
-  });
+    },
+  );
 
   // 3. Broadcast Pre-Scan
   ipcMain.handle(

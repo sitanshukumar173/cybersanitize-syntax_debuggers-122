@@ -158,7 +158,7 @@ const api = {
     ipcRenderer.invoke("fleet:create-lobby", port),
   setFleetWorkspaceMeta: (meta: any) =>
     ipcRenderer.invoke("fleet:set-workspace-meta", meta),
-  joinLobby: (params: { roomCode: string; nodeId: string }) =>
+  joinLobby: (params: { roomCode: string; nodeId: string; hostIp?: string }) =>
     ipcRenderer.invoke("fleet:join-lobby", params),
   broadcastPreScan: (
     nodeIds?: string[],

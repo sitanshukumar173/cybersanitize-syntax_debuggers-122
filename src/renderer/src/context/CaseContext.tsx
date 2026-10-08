@@ -124,7 +124,7 @@ interface CaseContextType {
   setSelectedFleetNode: (node: FleetNode | null) => void;
   isWebSocketConnected: boolean;
   createFleetWorkspace: (name: string, options: FleetWorkspaceOptions) => Promise<string>;
-  joinFleetWorkspace: (params: { roomCode: string }) => Promise<{ success: boolean; error?: string }>;
+  joinFleetWorkspace: (params: { roomCode: string; hostIp?: string }) => Promise<{ success: boolean; error?: string }>;
   toggleNodeSelection: (nodeId: string) => void;
   selectAllNodes: (selected: boolean) => void;
   dispatchBatchPreScan: () => void;
@@ -687,7 +687,7 @@ export const CaseProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return roomCode;
   };
 
-  const joinFleetWorkspace = async (params: { roomCode: string }): Promise<{ success: boolean; error?: string }> => {
+  const joinFleetWorkspace = async (params: { roomCode: string; hostIp?: string }): Promise<{ success: boolean; error?: string }> => {
     const nodeId = `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     let remoteWorkspace: any = null;
@@ -700,7 +700,8 @@ export const CaseProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await window.api.joinLobby({
         roomCode: params.roomCode,
-        nodeId
+        nodeId,
+        hostIp: params.hostIp
       });
 
       if (!res.success) {
