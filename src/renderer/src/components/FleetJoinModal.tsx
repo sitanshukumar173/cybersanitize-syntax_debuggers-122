@@ -18,6 +18,7 @@ export const FleetJoinModal: React.FC = () => {
   } = useCase()
 
   const [roomKey, setRoomKey] = useState('')
+  const [hostIp, setHostIp] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
@@ -35,7 +36,8 @@ export const FleetJoinModal: React.FC = () => {
 
     try {
       const res = await joinFleetWorkspace({
-        roomCode: roomKey.trim().toUpperCase()
+        roomCode: roomKey.trim().toUpperCase(),
+        hostIp: hostIp.trim() || undefined
       })
 
       if (res.success) {
@@ -69,6 +71,20 @@ export const FleetJoinModal: React.FC = () => {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-atlas-navy flex items-center justify-between">
+              <span>Central Host IP <span className="text-[10px] text-atlas-muted font-normal">Optional fallback</span></span>
+              <span className="text-[10px] text-atlas-muted font-normal">Example: 192.168.1.20</span>
+            </label>
+            <input
+              type="text"
+              value={hostIp}
+              onChange={event => setHostIp(event.target.value)}
+              placeholder="Leave empty for automatic LAN discovery"
+              className="w-full px-3 py-2 text-xs font-mono border border-atlas-border rounded-lg focus:border-atlas-forest focus:outline-none bg-atlas-bg"
+            />
+          </div>
+
           <button
             onClick={() => {
               setIsFleetJoinModalOpen(false)
@@ -91,7 +107,7 @@ export const FleetJoinModal: React.FC = () => {
 
           {/* Room Key Input */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-atlas-navy flex items-center justify-between">
+            <label className="text-xs font-bold text-atlas-navy flex items-center justify-between">
               <span>Fleet Workspace Room Key <span className="text-red-500">*</span></span>
               <span className="text-[10px] text-atlas-muted font-normal">Provided by Central Host</span>
             </label>
@@ -117,7 +133,7 @@ export const FleetJoinModal: React.FC = () => {
               <span>Automatic local-network discovery</span>
             </div>
             <p className="text-[11px] text-emerald-700 leading-relaxed">
-              Enter the room key only. CyberSanitize will find the matching open workspace on this LAN and sync its workspace and assigned options.
+              Enter the room key and use the optional host IP if automatic discovery is blocked by Windows Firewall or the network. Workspace policy and device inventory will sync after authentication.
             </p>
           </div>
 

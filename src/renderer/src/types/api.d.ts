@@ -71,7 +71,11 @@ declare global {
       setFleetWorkspaceMeta?: (
         meta: any,
       ) => Promise<{ success: boolean; error?: string }>;
-      joinLobby?: (params: { roomCode: string; nodeId: string }) => Promise<{
+      joinLobby?: (params: {
+        roomCode: string;
+        nodeId: string;
+        hostIp?: string;
+      }) => Promise<{
         success: boolean;
         workspaceMeta?: any;
         node?: {
