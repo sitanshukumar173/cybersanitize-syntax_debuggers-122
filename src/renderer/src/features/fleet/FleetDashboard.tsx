@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   Network,
   Laptop,
@@ -51,6 +51,13 @@ export const FleetDashboard: React.FC = () => {
     ...(joinedWorkspaceMeta?.selectedOptions ?? {})
   }
 
+  useEffect(() => {
+    const selectedNodes = connectedNodes.filter(node => node.selected)
+    if (selectedNodes.length > 0 && selectedNodes.every(node => node.preScanFindings)) {
+      setIsPreScanModalOpen(true)
+    }
+  }, [connectedNodes])
+
   const handleExportConsolidatedDossier = () => {
     const payload = {
       fleetKey,
@@ -72,9 +79,6 @@ export const FleetDashboard: React.FC = () => {
       `[${new Date().toLocaleTimeString()}] Pre-scan triggered on ${selectedCount} workstations.`,
       ...prev
     ])
-    setTimeout(() => {
-      setIsPreScanModalOpen(true)
-    }, 2000)
   }
 
   const handleTriggerBatchWipe = (standard: string) => {
@@ -253,7 +257,8 @@ export const FleetDashboard: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="max-h-[calc(100vh-22rem)] min-h-[16rem] overflow-y-auto overscroll-contain pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {connectedNodes.map(node => (
                 <NodeCard
                   key={node.id}
@@ -263,6 +268,7 @@ export const FleetDashboard: React.FC = () => {
                   onInspectPreScan={() => setIsPreScanModalOpen(true)}
                 />
               ))}
+              </div>
             </div>
           )}
         </div>
