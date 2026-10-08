@@ -12,7 +12,8 @@ import {
   Sliders,
   Layers,
   Terminal,
-  FileText
+  FileText,
+  Zap
 } from 'lucide-react'
 import { useCase, FleetBatchPlan, FleetNode } from '../../context/CaseContext'
 import NodeCard from './components/NodeCard'
