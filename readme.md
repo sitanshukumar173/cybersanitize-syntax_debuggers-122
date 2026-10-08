@@ -6,7 +6,7 @@ It is designed for controlled enterprise media handling where every operation ne
 
 ## Hackathon Links
 
-- Project website and installer download: **[Live download website - link to be added](https://cyber-sanitizer-qg1qv7xu2-tripathiswatantra21-5934s-projects.vercel.app/)**
+- Project website and installer download: **[Live download website](https://cyber-sanitizer.vercel.app/)**
 - GitHub repository: [github.com/sitanshukumar173/cybersanitize-syntax_debuggers-122](https://github.com/sitanshukumar173/cybersanitize-syntax_debuggers-122)
 - Full submission documentation: [docs/documentation.md](docs/documentation.md)
 
