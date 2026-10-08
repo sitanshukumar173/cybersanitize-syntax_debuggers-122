@@ -103,6 +103,16 @@ export interface ExecuteFileErasePayload {
   cleanMetadata: boolean;
 }
 
+export interface FleetBatchPlan {
+  nodeId: string;
+  enabled?: boolean;
+  operation: "WIPE" | "RECOVERY";
+  targetPath: string;
+  standard?: string;
+  fileTypes?: string[];
+  outputDir?: string;
+}
+
 export interface JobCompletePayload {
   success: boolean;
   operation: "WIPE" | "RECOVERY" | "FILE_ERASE" | "PRE_SCAN";

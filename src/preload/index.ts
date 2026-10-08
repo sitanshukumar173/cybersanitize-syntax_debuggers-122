@@ -201,6 +201,8 @@ const api = {
       cleanMetadata,
       nodeIds,
     ),
+  executeBatchFleet: (plans: any[]) =>
+    ipcRenderer.invoke("fleet:execute-batch", plans),
   saveRecoveredFiles: (destinationDir: string, files: any[]) =>
     ipcRenderer.invoke("fleet:save-recovered-files", destinationDir, files),
   closeLobby: () => ipcRenderer.invoke("fleet:close-lobby"),

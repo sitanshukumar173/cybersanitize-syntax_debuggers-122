@@ -13,21 +13,32 @@ import {
   Flame,
   Search
 } from 'lucide-react'
-import { FleetNode } from '../../../context/CaseContext'
+import { FleetBatchPlan, FleetNode } from '../../../context/CaseContext'
 
 interface NodeCardProps {
   node: FleetNode
   onToggleSelect: (id: string) => void
   onOpenEngine: (node: FleetNode) => void
   onInspectPreScan?: () => void
+  batchPlan: FleetBatchPlan
+  onBatchPlanChange: (plan: FleetBatchPlan) => void
 }
 
 export const NodeCard: React.FC<NodeCardProps> = ({
   node,
   onToggleSelect,
   onOpenEngine,
-  onInspectPreScan
+  onInspectPreScan,
+  batchPlan,
+  onBatchPlanChange
 }) => {
+  const updatePlan = (patch: Partial<FleetBatchPlan>) => onBatchPlanChange({ ...batchPlan, ...patch })
+
+  const handleBrowseDestination = async () => {
+    const selected = await window.api?.selectFolder?.()
+    const destination = Array.isArray(selected) ? selected[0] : selected
+    if (destination) updatePlan({ outputDir: destination })
+  }
   const getStatusBadge = () => {
     switch (node.status) {
       case 'ONLINE':
@@ -143,6 +154,80 @@ export const NodeCard: React.FC<NodeCardProps> = ({
             </div>
           </div>
         )}
+
+        <div className="rounded-lg border border-atlas-border bg-atlas-bg p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-atlas-muted">Batch action plan</span>
+            <span className={`text-[10px] font-mono font-bold ${batchPlan.enabled ? 'text-emerald-700' : 'text-atlas-muted'}`}>
+              {batchPlan.enabled ? 'READY' : 'NOT SELECTED'}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              ['NONE', 'Off'],
+              ['WIPE', 'Wipe'],
+              ['RECOVERY', 'Recover']
+            ] as const).map(([operation, label]) => (
+              <button
+                key={operation}
+                type="button"
+                onClick={() => updatePlan({ enabled: operation !== 'NONE', operation: operation === 'NONE' ? batchPlan.operation : operation })}
+                className={`px-2 py-1.5 rounded border text-[10px] font-bold ${
+                  (operation === 'NONE' && !batchPlan.enabled) || (batchPlan.enabled && batchPlan.operation === operation)
+                    ? 'bg-atlas-forest text-white border-atlas-forest'
+                    : 'bg-white text-atlas-navy border-atlas-border'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label className="block text-[10px] font-bold text-atlas-muted">Target drive / partition</label>
+          <select
+            value={batchPlan.targetPath}
+            onChange={event => updatePlan({ targetPath: event.target.value })}
+            className="w-full px-2 py-1.5 rounded border border-atlas-border bg-white text-[10px] font-mono text-atlas-navy"
+          >
+            <option value="">Select a reported target</option>
+            {(node.drives || []).map(drive => (
+              <option key={drive.path} value={drive.path}>{drive.friendlyName}</option>
+            ))}
+          </select>
+          {batchPlan.enabled && batchPlan.operation === 'WIPE' && (
+            <select
+              value={batchPlan.standard || 'nist-clear'}
+              onChange={event => updatePlan({ standard: event.target.value })}
+              className="w-full px-2 py-1.5 rounded border border-atlas-border bg-white text-[10px] text-atlas-navy"
+            >
+              <option value="nist-clear">NIST SP 800-88 Clear</option>
+              <option value="nist-purge">NIST SP 800-88 Purge</option>
+              <option value="dod-3">DoD 3-pass</option>
+              <option value="nvme-crypto">NVMe Crypto Erase</option>
+            </select>
+          )}
+          {batchPlan.enabled && batchPlan.operation === 'RECOVERY' && (
+            <div className="space-y-1.5">
+              <select
+                value={(batchPlan.fileTypes || ['DOCX', 'PDF', 'SQLITE']).join(',')}
+                onChange={event => updatePlan({ fileTypes: event.target.value.split(',') })}
+                className="w-full px-2 py-1.5 rounded border border-atlas-border bg-white text-[10px] text-atlas-navy"
+              >
+                <option value="DOCX,PDF,SQLITE">Fast evidence profile: documents and databases</option>
+                <option value="PDF,DOCX,JPEG,PNG">Evidence profile: documents and images</option>
+                <option value="DOCX,PDF,SQLITE,JPEG,PNG,MP4">Deep evidence profile: all common signatures</option>
+              </select>
+              <div className="flex gap-1.5">
+                <input
+                  value={batchPlan.outputDir || ''}
+                  onChange={event => updatePlan({ outputDir: event.target.value })}
+                  placeholder="Central recovery destination"
+                  className="min-w-0 flex-1 px-2 py-1.5 rounded border border-atlas-border bg-white text-[10px] font-mono"
+                />
+                <button type="button" onClick={handleBrowseDestination} className="px-2 rounded border border-atlas-border bg-white text-[10px] font-bold">Browse</button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Real-time Progress Bar (if active) */}
         {(node.status === 'SANITIZING' || node.status === 'PRE-SCANNING' || node.status === 'RECOVERING' || node.progress > 0) && (
