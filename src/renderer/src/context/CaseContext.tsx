@@ -63,6 +63,16 @@ export interface FleetNode {
   drives: any[];
 }
 
+export interface FleetBatchPlan {
+  nodeId: string;
+  enabled: boolean;
+  operation: 'WIPE' | 'RECOVERY';
+  targetPath: string;
+  standard?: string;
+  fileTypes?: string[];
+  outputDir?: string;
+}
+
 interface CaseContextType {
   orchestrationMode: OrchestrationMode;
   setOrchestrationMode: (mode: OrchestrationMode) => void;
@@ -121,6 +131,7 @@ interface CaseContextType {
   dispatchBatchWipe: (standard?: string) => void;
   dispatchBatchRecovery: (types?: string[], sourcePath?: string, outputDir?: string) => void;
   dispatchBatchFileErase: (paths: string[], standard?: string, cleanMetadata?: boolean) => void;
+  executeBatchFleet: (plans: FleetBatchPlan[]) => Promise<{ success: boolean; error?: string }>;
   selectFleetNodeForEngine: (node: FleetNode) => void;
   backToFleetOverview: () => void;
   backToLanding: () => void;
@@ -894,6 +905,43 @@ export const CaseProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } : node));
   };
 
+  const executeBatchFleet = async (plans: FleetBatchPlan[]): Promise<{ success: boolean; error?: string }> => {
+    const validPlans = plans.filter(plan => plan.enabled && plan.nodeId && plan.targetPath);
+    if (!window.api?.executeBatchFleet) {
+      return { success: false, error: 'Fleet batch execution is only available in the desktop app.' };
+    }
+    if (validPlans.length === 0) {
+      return { success: false, error: 'Select an operation and target for at least one workstation.' };
+    }
+
+    setConnectedNodes(prev => prev.map(node => {
+      const plan = validPlans.find(item => item.nodeId === node.id);
+      if (!plan) return node;
+      return {
+        ...node,
+        status: plan.operation === 'WIPE' ? 'SANITIZING' : 'RECOVERING',
+        progress: 0,
+        speed: 'Queued',
+        eta: '--',
+        lastLog: `${plan.operation === 'WIPE' ? 'Sanitization' : 'Recovery'} queued for ${plan.targetPath}`
+      };
+    }));
+
+    try {
+      const result = await window.api.executeBatchFleet(validPlans);
+      if (!result?.success) throw new Error(result?.error || 'No fleet batch plans were dispatched.');
+      return { success: true };
+    } catch (error: any) {
+      const message = error.message || String(error);
+      setConnectedNodes(prev => prev.map(node => validPlans.some(plan => plan.nodeId === node.id) ? {
+        ...node,
+        status: 'FAILED',
+        lastLog: `Batch dispatch failed: ${message}`
+      } : node));
+      return { success: false, error: message };
+    }
+  };
+
   const selectFleetNodeForEngine = (node: FleetNode) => {
     drivesOwnerRef.current = 'fleet';
     setSelectedFleetNode(node);
@@ -981,6 +1029,7 @@ export const CaseProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatchBatchWipe,
         dispatchBatchRecovery,
         dispatchBatchFileErase,
+        executeBatchFleet,
         selectFleetNodeForEngine,
         backToFleetOverview,
         backToLanding

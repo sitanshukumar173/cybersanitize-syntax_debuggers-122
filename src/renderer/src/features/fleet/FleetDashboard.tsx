@@ -14,10 +14,9 @@ import {
   Terminal,
   FileText
 } from 'lucide-react'
-import { useCase, FleetNode } from '../../context/CaseContext'
+import { useCase, FleetBatchPlan, FleetNode } from '../../context/CaseContext'
 import NodeCard from './components/NodeCard'
 import PreScanModal from './components/PreScanModal'
-import BatchTriggerModal from './components/BatchTriggerModal'
 
 export const FleetDashboard: React.FC = () => {
   const {
@@ -28,14 +27,13 @@ export const FleetDashboard: React.FC = () => {
     toggleNodeSelection,
     selectAllNodes,
     dispatchBatchPreScan,
-    dispatchBatchWipe,
-    dispatchBatchRecovery,
+    executeBatchFleet,
     selectFleetNodeForEngine,
     backToLanding
   } = useCase()
 
   const [isPreScanModalOpen, setIsPreScanModalOpen] = useState(false)
-  const [isBatchWipeModalOpen, setIsBatchWipeModalOpen] = useState(false)
+  const [batchPlans, setBatchPlans] = useState<Record<string, FleetBatchPlan>>({})
   const [telemetryLog, setTelemetryLog] = useState<string[]>([
     `[${new Date().toLocaleTimeString()}] Local LAN WebSocket fleet host initialized on port 4096.`,
     `[${new Date().toLocaleTimeString()}] Waiting for workstations to join room ${fleetKey}.`
@@ -50,6 +48,18 @@ export const FleetDashboard: React.FC = () => {
     preScanEnabled: true,
     ...(joinedWorkspaceMeta?.selectedOptions ?? {})
   }
+
+  const getDefaultPlan = (node: FleetNode): FleetBatchPlan => ({
+    nodeId: node.id,
+    enabled: false,
+    operation: 'WIPE',
+    targetPath: node.drives?.[0]?.path || '',
+    standard: assignedOptions.wipeStandard,
+    fileTypes: assignedOptions.recoveryTypes,
+    outputDir: 'C:\\ForensicEvidence\\Recovered'
+  })
+
+  const activePlanCount = connectedNodes.filter(node => batchPlans[node.id]?.enabled).length
 
   useEffect(() => {
     const selectedNodes = connectedNodes.filter(node => node.selected)
@@ -81,18 +91,11 @@ export const FleetDashboard: React.FC = () => {
     ])
   }
 
-  const handleTriggerBatchWipe = (standard: string) => {
-    dispatchBatchWipe(standard)
+  const handleExecuteBatch = async () => {
+    const plans = connectedNodes.map(node => batchPlans[node.id] || getDefaultPlan(node))
+    const result = await executeBatchFleet(plans)
     setTelemetryLog(prev => [
-      `[${new Date().toLocaleTimeString()}] Batch sanitization (${standard}) dispatched to ${selectedCount} workstations.`,
-      ...prev
-    ])
-  }
-
-  const handleTriggerBatchRecovery = () => {
-    dispatchBatchRecovery(assignedOptions.recoveryTypes)
-    setTelemetryLog(prev => [
-      `[${new Date().toLocaleTimeString()}] Batch recovery dispatched to ${selectedCount} workstations.`,
+      `[${new Date().toLocaleTimeString()}] ${result.success ? 'Batch execution dispatched in parallel.' : `Batch execution failed: ${result.error}`}`,
       ...prev
     ])
   }
@@ -217,21 +220,12 @@ export const FleetDashboard: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setIsBatchWipeModalOpen(true)}
-              disabled={selectedCount === 0}
-              className="px-4 py-2 rounded-lg text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              onClick={handleExecuteBatch}
+              disabled={activePlanCount === 0}
+              className="atlas-btn-primary px-4 py-2 text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50"
             >
-              <Flame className="w-3.5 h-3.5" />
-              <span>Batch Wipe Selected</span>
-            </button>
-
-            <button
-              onClick={handleTriggerBatchRecovery}
-              disabled={selectedCount === 0}
-              className="atlas-btn-primary px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>Batch Recovery</span>
+              <Zap className="w-3.5 h-3.5" />
+              <span>Execute Batch ({activePlanCount})</span>
             </button>
           </div>
         </div>
@@ -266,6 +260,8 @@ export const FleetDashboard: React.FC = () => {
                   onToggleSelect={() => toggleNodeSelection(node.id)}
                   onOpenEngine={() => selectFleetNodeForEngine(node)}
                   onInspectPreScan={() => setIsPreScanModalOpen(true)}
+                  batchPlan={batchPlans[node.id] || getDefaultPlan(node)}
+                  onBatchPlanChange={plan => setBatchPlans(prev => ({ ...prev, [node.id]: plan }))}
                 />
               ))}
               </div>
@@ -298,13 +294,6 @@ export const FleetDashboard: React.FC = () => {
         nodes={connectedNodes.filter(n => n.selected)}
       />
 
-      <BatchTriggerModal
-        isOpen={isBatchWipeModalOpen}
-        onClose={() => setIsBatchWipeModalOpen(false)}
-        selectedCount={selectedCount}
-        defaultStandard={assignedOptions.wipeStandard}
-        onConfirmWipe={handleTriggerBatchWipe}
-      />
     </div>
   )
 }

@@ -105,6 +105,9 @@ declare global {
         cleanMetadata: boolean,
         nodeIds?: string[],
       ) => Promise<{ success: boolean; error?: string }>;
+      executeBatchFleet?: (
+        plans: any[],
+      ) => Promise<{ success: boolean; dispatched?: number; error?: string }>;
       saveRecoveredFiles?: (
         destinationDir: string,
         files: any[],

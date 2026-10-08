@@ -284,6 +284,19 @@ export function registerFleetIpc(
     },
   );
 
+  ipcMain.handle("fleet:execute-batch", async (_, plans: any[]) => {
+    if (!fleetHostInstance || !Array.isArray(plans)) {
+      return { success: false, dispatched: 0, error: "Fleet host not running" };
+    }
+    const dispatched = fleetHostInstance.executeBatch(plans);
+    return {
+      success: dispatched > 0,
+      dispatched,
+      error:
+        dispatched > 0 ? undefined : "No valid batch plans were dispatched.",
+    };
+  });
+
   ipcMain.handle(
     "fleet:save-recovered-files",
     async (

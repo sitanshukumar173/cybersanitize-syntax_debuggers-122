@@ -26,6 +26,7 @@ import {
   type JobCompletePayload,
   type ExecuteWipePayload,
   type ExecuteRecoveryPayload,
+  type FleetBatchPlan,
   type FleetDriveDescriptor,
 } from "./lobbyProtocol";
 
@@ -422,6 +423,30 @@ class FleetHost extends EventEmitter {
       FleetMessageType.EXEC_FILE_ERASE,
       payload,
     );
+  }
+
+  executeBatch(plans: FleetBatchPlan[]): number {
+    let dispatched = 0;
+    for (const plan of plans) {
+      if (!plan.targetPath) continue;
+      if (plan.operation === "WIPE") {
+        dispatched += this.broadcastWipe(
+          plan.standard || "nist-clear",
+          [plan.nodeId],
+          {
+            [plan.nodeId]: plan.targetPath,
+          },
+        );
+      } else {
+        dispatched += this.broadcastRecovery(
+          plan.fileTypes || ["DOCX", "PDF", "SQLITE"],
+          [plan.nodeId],
+          { [plan.nodeId]: plan.targetPath },
+          plan.outputDir ? { [plan.nodeId]: plan.outputDir } : undefined,
+        );
+      }
+    }
+    return dispatched;
   }
 
   /**
